@@ -1,0 +1,8 @@
+---
+- name: install language package(s)
+  become: yes
+  apt:
+    pkg: "{{ language_packages }}"
+    state: present
+  notify:
+    - update locales

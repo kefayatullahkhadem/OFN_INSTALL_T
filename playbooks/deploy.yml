@@ -1,0 +1,45 @@
+---
+# Deploy a release or other branch on a server
+#
+# This playbook will create a new folder to build the app with Ruby and JS dependencies, and swap
+# over for a (relatively) seamless update.
+#
+# git_version: specify a git ref for the openfoodnetwork codebase (default is master). Eg:
+#  -e "git_version=v3.7.0"
+#
+# github_key: specify a forked branch instead. Eg:
+#  -e "github_key=jibees:upgrade-node-version"
+
+- name: deploy
+  hosts: ofn_servers
+  strategy: free
+  remote_user: "{{ user }}"
+  become: yes
+  become_user: "{{ app_user }}"
+
+  handlers:
+    - include: ../roles/shared_handlers/handlers/main.yml
+
+  tasks:
+    - name: Check we're not deploying master to production
+      fail:
+        msg: |
+          WARNING: The current settings would deploy `master` branch to a production server!
+          Specify a release when deploying by adding (for example) ` -e "git_version=v3.7.0"`
+          to the comand. If you still see this message, check for typos :)
+          Latest releases here: https://github.com/openfoodfoundation/openfoodnetwork/releases
+      when: rails_env == "production" and git_version == "master"
+
+    - block:
+      - include_role:
+          name: deploy
+
+      - meta: flush_handlers # Ensure handlers run successfully before reporting success
+
+      
+      
+      rescue:
+      
+        - debug:
+            msg: Deployment failed
+          failed_when: True # Ensure Ansible returns a non-zero error code after rescue

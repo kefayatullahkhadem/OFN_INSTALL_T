@@ -1,0 +1,15 @@
+# This role holds reusable handlers that can be included in multiple playbooks to keep things DRY
+
+- name: restart puma
+  service:
+    name: puma
+    state: restarted
+  become: yes
+  become_user: root
+
+- name: restart postgres
+  service:
+    name: postgresql
+    state: restarted
+  become: yes
+  become_user: root

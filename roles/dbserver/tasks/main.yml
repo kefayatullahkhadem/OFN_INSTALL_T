@@ -1,0 +1,44 @@
+--- # dbserver
+
+- import_tasks: postgresql.yml # Install postgresql with geerlingguy.postgresql role
+
+- name: add custom log directory
+  file:
+    state: directory
+    dest: /var/log/pg_log
+    mode: 0750
+    owner: postgres
+    group: postgres
+  become: yes
+
+- name: add postgres conf.d directory
+  file:
+    dest: "{{ postgresql_config_path }}/conf.d"
+    state: directory
+    owner: postgres
+    group: postgres
+    mode: 0740
+  become: yes
+
+# The .pgpass file enables us to access the database with psql or
+# pgdump without entering a password. It is not required but makes
+# sysadmin and dev tasks more convenient.
+- name: add .pgpass file for {{ app_user }}
+  template:
+    src: pgpass.j2
+    dest: "{{ app_user_home_path }}/.pgpass"
+    owner: "{{ app_user }}"
+    mode: 0600
+  become: yes
+  become_user: "{{ app_user }}"
+
+- import_tasks: fix_template_encoding.yml
+  tags: template_encoding
+
+# As required in db/schema.rb (for Datadog)
+- name: create pg_stat_statements extension
+  become: yes
+  become_user: postgres
+  postgresql_ext:
+    name: pg_stat_statements
+    db: "{{ db }}"

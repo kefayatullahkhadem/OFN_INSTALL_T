@@ -1,0 +1,17 @@
+---
+domain: khadimweb.com
+host_id: es-prod
+rails_env: production
+
+
+
+admin_email: info@khadim.uk
+
+mail_domain: info@khadim.uk
+
+swapfile_size: 1G
+unicorn_timeout: 120
+
+certbot_domains:
+  - khadimweb.com
+  - www.khadimweb.com

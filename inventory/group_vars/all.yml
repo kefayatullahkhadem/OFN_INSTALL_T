@@ -1,0 +1,414 @@
+---
+
+# User name and password for running ansible on host
+user: root
+
+# User name for deployment
+deployment_user: khadim.uk-depyloyment
+
+# Connecting to the server
+#   ssh_pubkey - Location of the SSH public key file for the user created by
+#   running "ansible user.yml -f 10"  The location given is the path on your
+#   local machine.  Ex: "{{ lookup('file', '~/.ssh/ofn_rsa.pub') }}"
+# The Ansible scripts will put it up onto the proper location on the OFN server.
+# This might be used by hosts (like DigitalOcean) that require or encourage you
+# to connect using SSH instead of just passwords.
+ssh_pubkey: "{{ lookup('file', '~/.ssh/{{ ssh_pubkey_name }}') }}"
+
+# You can paste the repo/branch straight from a github PR here, like: "Contributor22:new_feature"
+github_key: live:master
+
+git_repo: "https://github.com/{{ github_key.split(':')[0] }}/openfoodnetwork.git"
+git_version: "{{ github_key.split(':')[1] }}"
+
+l10n_git_version: HEAD
+
+#----------------------------------------------------------------------
+# Default values (should be overridden in each server config)
+rails_env: staging
+host_id: ofn-staging
+admin_email: "info@khadim.uk"
+
+
+#----------------------------------------------------------------------
+# security role variables
+security_autoupdate_mail_to: "info@khadim.uk"
+security_autoupdate_blacklist:
+  - nginx
+  - nginx-common
+
+#----------------------------------------------------------------------
+# Database backup variables
+default_backup_filename: backup
+local_backup_path: "../backups/{{ default_backup_filename }}.sql.gz"
+remote_backup_dir: "/var/lib/postgresql"
+remote_backup_path: "{{ remote_backup_dir }}/{{ default_backup_filename }}.sql.gz"
+
+#----------------------------------------------------------------------
+# swapfile variables
+swapfile_size: false
+
+#----------------------------------------------------------------------
+# Rails variables
+ruby_version: 3.0.3
+
+rbenv_extra_depends:
+  - libjemalloc-dev
+
+ruby_compile_options: "--with-jemalloc"
+
+ruby_versions:
+  - version: 2.7.3
+    env:
+      RUBY_CONFIGURE_OPTS: "{{ ruby_compile_options }}"
+  - version: 3.0.3
+    env:
+      RUBY_CONFIGURE_OPTS: "{{ ruby_compile_options }}"
+
+env:
+  RAILS_ENV: "{{ rails_env }}"
+  PATH: "{{ gem_home }}/bin:{{ ansible_env.PATH }}"
+
+multiredis_instances:
+  - name: cache
+    port: 6380
+    configs: |
+      maxmemory 124mb
+      maxmemory-policy allkeys-lru
+  - name: jobs
+    port: 6381
+    configs: |
+      maxmemory 50mb
+      maxmemory-policy noeviction
+      appendonly yes
+      appendfsync everysec
+
+#----------------------------------------------------------------------
+# Database variables
+db: openfoodnetwork
+test_db: ofn_test
+db_user: ofn_user
+db_host: localhost
+postgres_encoding: en_US.utf8
+
+#----------------------------------------------------------------------
+# Postgresql variables
+
+# These include the default values for postgres, and some empty (extendable) values.
+# Entries marked custom_* can be defined in /host_vars files, and will be appended
+# to the defaults if present. Make sure you use the "list" notation with the dashes!
+
+postgresql_version: "{% if ansible_distribution_major_version == '16' %}9.5{% elif ansible_distribution_major_version == '18' %}10{% else %}12{% endif %}"
+postgresql_data_dir: "/var/lib/postgresql/{{ postgresql_version }}/main"
+postgresql_bin_path: "/usr/lib/postgresql/{{ postgresql_version }}/bin"
+postgresql_config_path: "/etc/postgresql/{{ postgresql_version }}/main"
+postgresql_daemon: postgresql
+postgresql_packages:
+  - postgresql
+  - postgresql-contrib
+  - libpq-dev
+
+default_hba_entries:
+  - {type: local, database: replication, user: ofn_data, auth_method: md5}
+  - {type: host, database: replication, user: ofn_data, address: '127.0.0.1/32', auth_method: md5}
+  - {type: local, database: all, user: postgres, auth_method: peer}
+  - {type: local, database: all, user: all, auth_method: peer}
+  - {type: host, database: all, user: all, address: '127.0.0.1/32', auth_method: md5}
+  - {type: host, database: all, user: all, address: '::1/128', auth_method: md5}
+
+custom_hba_metabase: {type: hostssl, database: "{{ db }}", user: "metabase", address: "167.99.89.242/32", auth_method: md5}
+custom_hba_n8n: {type: hostssl, database: "{{ db }}", user: "n8n", address: "128.199.44.140/32", auth_method: md5}
+
+custom_hba_entries: []
+
+postgresql_hba_entries: "{{ default_hba_entries + custom_hba_entries }}"
+
+postgres_listen_addresses:
+  - localhost
+
+postgres_shared_preload_libraries:
+  - pg_stat_statements
+
+postgresql_global_config_options:
+  - option: listen_addresses
+    value: "{{ postgres_listen_addresses | join(',') }}"
+  - option: shared_preload_libraries
+    value: "{{ postgres_shared_preload_libraries | join(',') }}"
+  - option: wal_sender_timeout
+    value: "300000"
+  - option: include_dir
+    value: "conf.d"
+  - option: log_directory
+    value: "log"
+
+debezium_version: "0.10.0.Final"
+
+#----------------------------------------------------------------------
+# App variables
+app: openfoodnetwork
+# Paths
+app_user_home_path: "/home/{{ app_user }}"
+gem_path: "{{ app_user_home_path }}/.gem"
+rbenv_shim_path: "{{ app_user_home_path }}/.rbenv/shims"
+rbenv_bin_path: "{{ app_user_home_path }}/.rbenv/bin"
+bundle_path: "{{ rbenv_shim_path }}/bundle"
+app_path: "{{ app_user_home_path }}/apps/{{ app }}"
+current_path: "{{ app_path }}/current"
+repo_path: "{{ app_path }}/repo"
+shared_path: "{{ app_path }}/shared"
+backup_path: "{{ app_path }}/backups"
+releases_path: "{{ app_path }}/releases-old"
+rollback_path: "{{ app_path }}/rollback"
+rollback_sql_path: "{{ app_path }}/rollback.sql.gz"
+system_path: "{{ shared_path }}/system"
+images_path: "{{ shared_path }}/images"
+files_path: "{{ shared_path }}/files"
+storage_path: "{{ shared_path }}/storage"
+spree_path: "{{ shared_path }}/spree"
+config_path: "{{ shared_path }}/config"
+log_path: "{{ shared_path }}/log"
+pid_path: "{{ shared_path }}/pids"
+sock_path: "{{ shared_path }}/sock"
+l10n_path: "{{ shared_path }}/l10n"
+
+#----------------------------------------------------------------------
+# Node variables
+
+node_version: 14.21.2
+nodenv_version: 1.4.1
+nodenv_root: "{{ app_user_home_path }}/.nodenv"
+
+#----------------------------------------------------------------------
+# Logrotate options
+
+logrotate_applications:
+  - name: rails
+    definitions:
+      - logs:
+          - "{{ current_path }}/log/production.log"
+          - "{{ current_path }}/log/staging.log"
+          - "{{ log_path }}/puma.log"
+        options:
+          - weekly        # rotate weekly
+          - rotate 4      # delete logs older than 4 rotations
+          - compress      # compress rotated logs
+          - missingok     # ignore missing logs
+          - notifempty    # don't rotate if empty
+          - copytruncate  # copy the log, then empty the active logfile
+
+  - name: sidekiq
+    definitions:
+      - logs:
+          - "{{ current_path }}/log/sidekiq.log"
+        options:
+          - daily
+          - rotate 14     # delete logs older than 14 days
+          - compress      # compress rotated logs
+          - missingok     # ignore missing logs
+          - notifempty    # don't rotate if empty
+        postrotate:
+          - "pkill -USR2 -f sidekiq"
+
+  - name: postgres_queries
+    definitions:
+      - logs:
+          - "/var/log/pg_log/*.log"
+        options:
+          - daily         # run daily
+          - rotate 0      # don't rotate files
+          - missingok     # ignore missing logs
+          - nocreate      # don't replace log files
+        lastaction:       # delete log files older than 1 day
+          - "find /var/log/pg_log/ -name '*.log' -mtime +1 -exec rm {};"
+
+#----------------------------------------------------------------------
+# User name for the unprivileged user which runs the web server
+app_user: openfoodnetwork
+unicorn_timeout: 30
+
+puma_config: "{{ config_path }}/puma.rb"
+puma_log: "{{ log_path }}/puma.log"
+puma_pid: "{{ pid_path }}/puma.pid"
+puma_sock: "{{ sock_path }}/puma.{{ app }}.sock"
+puma_workers: 2
+puma_threads: 3
+puma_timeout: "{{ unicorn_timeout | default('30') }}"
+
+#----------------------------------------------------------------------
+# Core devs: users named here will have SSH access on all instances
+
+#----------------------------------------------------------------------
+# nginx config
+
+app_root: "{{ current_path }}"
+
+nginx_official_repo: True
+
+nginx_extra_root_params:
+  - load_module modules/ngx_http_brotli_filter_module.so
+  - load_module modules/ngx_http_brotli_static_module.so
+
+nginx_http_params:
+  - sendfile "on"
+  - tcp_nopush "on"
+  - tcp_nodelay "on"
+  - keepalive_timeout "65"
+  - log_format nginx '$remote_addr - $remote_user [$time_local] ' '"$request" $status $body_bytes_sent $request_time ' '"$http_referer" "$http_user_agent"'
+  - access_log "{{nginx_log_dir}}/access.log" nginx
+  - "error_log {{nginx_log_dir}}/error.log error"
+  - server_tokens off
+  - types_hash_max_size 2048
+
+nginx_acme_challenge_config: |+
+  location '/.well-known/acme-challenge' {
+    default_type "text/plain";
+    root /etc/letsencrypt/webrootauth;
+  }
+
+nginx_valid_methods: limit_except GET POST PUT PATCH DELETE OPTIONS { deny all; }
+
+# Cipher suite selection based on these settings (with TLSv1 and TLSv1.1 removed):
+# https://ssl-config.mozilla.org/#server=nginx&version=1.16.1&config=old&openssl=1.0.2g
+nginx_tls_cipher_suites: |+
+  ssl_protocols TLSv1.2;
+  ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA;
+  ssl_prefer_server_ciphers on;
+
+nginx_sites:
+  default:
+    - |
+      listen 80 default_server;
+      listen [::]:80 default_server;
+      server_name  _;
+      add_header X-Content-Type-Options nosniff always;
+      add_header X-Xss-Protection "1; mode=block" always;
+      add_header X-Frame-Options DENY always;
+      add_header Content-Security-Policy "default-src none" always;
+      location / {
+        access_log off;
+        return 444;
+      }
+
+  ofn_80:
+    - |
+      listen 80;
+      listen [::]:80;
+      server_name {{ certbot_domains | default([domain]) | join(' ') }};
+
+      add_header X-Content-Type-Options nosniff always;
+      add_header X-Xss-Protection "1; mode=block" always;
+
+      {{ nginx_acme_challenge_config }}
+
+      location / {
+        {{ nginx_valid_methods }}
+        return 301 https://{{ domain }}$request_uri;
+      }
+
+  000_redirect_www:
+    - |
+      listen 443 ssl http2;
+      listen [::]:443 ssl http2;
+      server_name www.{{ domain }};
+
+      ssl_certificate      /etc/letsencrypt/live/{{ certbot_cert_name | default(domain) }}/fullchain.pem;
+      ssl_certificate_key  /etc/letsencrypt/live/{{ certbot_cert_name | default(domain) }}/privkey.pem;
+
+      {{ nginx_tls_cipher_suites }}
+
+      return 301 https://{{ domain }}$request_uri;
+
+  ofn_443:
+    - |
+      listen 443 ssl http2;
+      listen [::]:443 ssl http2;
+      server_name {{ certbot_domains | default([domain]) | join(' ') }};
+      root {{ app_root }}/public;
+
+      ssl_certificate      /etc/letsencrypt/live/{{ certbot_cert_name | default(domain) }}/fullchain.pem;
+      ssl_certificate_key  /etc/letsencrypt/live/{{ certbot_cert_name | default(domain) }}/privkey.pem;
+
+      {{ nginx_tls_cipher_suites }}
+
+      add_header X-Content-Type-Options nosniff always;
+      add_header X-Xss-Protection "1; mode=block" always;
+
+      gzip on;
+      gzip_types text/css text/javascript text/plain application/javascript application/x-javascript application/json;
+      gzip_disable "msie6";
+
+      brotli on;
+      brotli_types text/css text/javascript text/plain application/javascript application/x-javascript application/json;
+
+      try_files $uri/index.html $uri @rails;
+      location @rails {
+        {{ nginx_valid_methods }}
+
+        if (-f /etc/nginx/maintenance.html) {
+          return 503;
+        }
+
+        gzip_proxied no-cache no-store private expired auth;
+        proxy_http_version 1.1;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Request-Start "t=${msec}";
+        proxy_redirect off;
+        proxy_pass http://rails;
+      }
+
+      location ~ ^/(assets)/ {
+        {{ nginx_valid_methods }}
+        gzip_static on;
+        brotli_static on;
+        expires max;
+        add_header Cache-Control public;
+      }
+
+      error_page 500 502 504 /500.html;
+      error_page 503 @maintenance;
+
+      location @maintenance {
+        {{ nginx_valid_methods }}
+        root /etc/nginx;
+        try_files /maintenance.html =503;
+      }
+
+      location /cable {
+        {{ nginx_valid_methods }}
+        proxy_pass http://rails;
+        proxy_http_version 1.1;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Forwarded-Ssl on;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+      }
+
+      client_max_body_size 4G;
+      keepalive_timeout {{ puma_timeout }};
+      proxy_read_timeout {{ puma_timeout }};
+      proxy_send_timeout {{ puma_timeout }};
+
+      include /etc/nginx/sites-available/ofn/*;
+
+nginx_events_params:
+  - worker_connections 768
+
+nginx_configs:
+  upstream:
+    - upstream rails { server unix:{{ puma_sock }} fail_timeout=0; }
+
+# Set python interpeter to the symlink created by setup
+ansible_python_interpreter: '/usr/bin/python'
+
+# Fix for renamed branch in rbenv-install repo
+rbenv_plugins:
+  - { name: "rbenv-vars",         repo: "https://github.com/rbenv/rbenv-vars.git",         version: "master" }
+  - { name: "ruby-build",         repo: "https://github.com/rbenv/ruby-build.git",         version: "master" }
+  - { name: "rbenv-default-gems", repo: "https://github.com/rbenv/rbenv-default-gems.git", version: "master" }
+  - { name: "rbenv-installer",    repo: "https://github.com/rbenv/rbenv-installer.git",    version: "main" }
+  - { name: "rbenv-update",       repo: "https://github.com/rkh/rbenv-update.git",         version: "master" }
+  - { name: "rbenv-whatis",       repo: "https://github.com/rkh/rbenv-whatis.git",         version: "master" }
+  - { name: "rbenv-use",          repo: "https://github.com/rkh/rbenv-use.git",            version: "master" }

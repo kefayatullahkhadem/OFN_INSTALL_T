@@ -1,0 +1,24 @@
+---
+# See https://github.com/openfoodfoundation/ofn-install/wiki/Setup for more info
+checkout_zone: Europe
+country_code: ES
+currency: EUR
+locale: en
+available_locales: en_GB,fr
+language: en_US.UTF-8
+language_packages:
+  - language-pack-es-base
+  - language-pack-en-base
+  - language-pack-fr-base
+l10n_repo: https://github.com/openfoodfoundation/l10n_fr.git
+timezone: Madrid
+
+# Used for the LetsEncrypt email setting
+developer_email: shahidonkhadim@gmail.com
+
+users_sysadmin:
+  - khadim
+
+maintenance_mode_message: >
+  Une maintenance est en cours. Merci de patienter, la plateforme sera bientôt à nouveau disponible.
+  Veuillez nous excuser pour la gêne occasionnée

@@ -1,0 +1,70 @@
+--- # common
+
+- name: update apt
+  apt:
+    update_cache: yes
+    cache_valid_time: 86400 # seconds = 60*60*24 seconds = 24 hours
+  become: yes
+  tags: packages
+
+- name: install base packages
+  apt:
+    name: "{{ packages }}"
+  become: yes
+  vars:
+    packages:
+      # Ansible support
+      - python-pycurl
+      - python3-psycopg2
+
+      # unknown why or if needed
+      # The playbooks run without these dependencies,
+      # but they may be hidden run time dependencies
+      # like imagemagick.
+      - acl
+      - nodejs
+      - curl
+
+      # build ruby and gems
+      - build-essential
+
+      # manage code
+      - git-core
+
+      # Nginx brotli
+      - libgd-dev
+
+      # OFN dependencies
+      - imagemagick
+      - libvips42
+      - libpq-dev
+      - zlib1g-dev
+      - libssl-dev
+      - libxml2
+      - libxml2-dev
+      - libxslt1-dev
+      - libxrender1
+      - webp
+  tags: packages
+
+- name: install base packages for old distros
+  apt:
+    name: "{{ packages }}"
+  become: yes
+  vars:
+    packages:
+      # Ansible support
+      - python-psycopg2
+  tags: packages
+  when: ansible_distribution_major_version <= '18'
+
+- name: set up redis
+  include_tasks: redis.yml
+
+- name: shut down memcached if present
+  service:
+    name: memcached
+    state: stopped
+  ignore_errors: yes
+  failed_when: false
+  become: yes

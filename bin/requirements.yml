@@ -1,0 +1,27 @@
+# from galaxy
+- src: geerlingguy.security
+  version: 1.5.0
+
+- src: zzet.rbenv
+  version: 3.4.2
+
+- src: jdauphant.nginx
+  version: v2.8.1
+
+- src: coopdevs.certbot_nginx
+  version: v0.3.0
+
+- src: oefenweb.swapfile
+  version: v2.0.14
+
+- src: Datadog.datadog
+  version: 4.16.0
+
+- src: geerlingguy.postgresql
+  version: 3.4.0
+
+- src: libre_ops.multi_redis
+  version: 1.0.1
+
+- src: arillso.logrotate
+  version: 1.4.5
